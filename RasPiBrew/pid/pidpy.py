@@ -1,121 +1,144 @@
+import time
 
-class pidpy(object):
-    ek_1 = 0.0  # e[k-1] = SP[k-1] - PV[k-1] = Tset_hlt[k-1] - Thlt[k-1]
-    ek_2 = 0.0  # e[k-2] = SP[k-2] - PV[k-2] = Tset_hlt[k-2] - Thlt[k-2]
-    xk_1 = 0.0  # PV[k-1] = Thlt[k-1]
-    xk_2 = 0.0  # PV[k-2] = Thlt[k-1]
-    yk_1 = 0.0  # y[k-1] = Gamma[k-1]
-    yk_2 = 0.0  # y[k-2] = Gamma[k-1]
-    lpf_1 = 0.0 # lpf[k-1] = LPF output[k-1]
-    lpf_2 = 0.0 # lpf[k-2] = LPF output[k-2]
-    
-    yk = 0.0 # output
-    
-    GMA_HLIM = 100.0
-    GMA_LLIM = 0.0
-    
-    def __init__(self, ts, kc, ti, td):
-        self.kc = kc
-        self.ti = ti
-        self.td = td
-        self.ts = ts
-        self.k_lpf = 0.0
-        self.k0 = 0.0
-        self.k1 = 0.0
-        self.k2 = 0.0
-        self.k3 = 0.0
-        self.lpf1 = 0.0
-        self.lpf2 = 0.0
-        self.ts_ticks = 0
-        self.pid_model = 3
-        self.pp = 0.0
-        self.pi = 0.0
-        self.pd = 0.0
-        if (self.ti == 0.0):
-            self.k0 = 0.0
+class pidpy:
+    def __init__(self, sampleTime, Kp, Ki, Kd, setDirectionReverse=False):
+        print("sampleTime =%f",sampleTime)
+        self.isAutomatic = True
+        self.output = 0
+        self.input = 0
+        self.error = 0
+        self.lastDInput = 0
+        self.lastInput = 0
+        self.ITerm = 0
+        self.setOutputLimits(0, 100)
+        self.sampleTime = sampleTime*1000
+        self.isDirectionReverse = False
+        self.setControllerDirection(setDirectionReverse)
+        self.setTunings(Kp,Ki,Kd)
+        self.lastTime = self.millis() - self.sampleTime
+        self.k_lpf = 0.1*Kd
+        self.lpf1 = (2.0 * self.k_lpf - self.sampleTime*1000) / (2.0 * self.k_lpf + self.sampleTime*1000)
+        self.lpf2 = self.sampleTime*1000 / (2.0 * self.k_lpf + self.sampleTime*1000)
+        self.lpf = 0
+
+    def millis(self):
+        return time.time()*1000
+#        self.timer = self.timer+1
+#        return self.timer
+
+    def isTimeToRecalculate(self):
+        #timeChange = self.millis()-self.lastTime
+        #return timeChange>=self.sampleTime
+        return True
+
+    def compute(self, input, setPoint):
+        if not self.isAutomatic:
+            return False
+        self.input = input
+        self.setPoint = setPoint
+        if self.isTimeToRecalculate():
+            self.error = self.setPoint - input
+
+            # prevent windup to full output of ITerm if we are far away from the setpoint
+            if input<self.setPoint-100/self.kp:
+                self.ITerm = self.outMin
+                dInput = 0
+            else:
+                self.ITerm = self.ITerm + (self.ki*self.error)
+                dInput = input - self.lastInput
+
+
+            if self.ITerm > self.outMax:
+                self.ITerm = self.outMax
+            elif self.ITerm < self.outMin:
+                self.ITerm = self.outMin
+
+            self.lpf = self.lpf1*self.lpf + self.lpf2*(dInput + self.lastDInput)
+            PTerm = self.kp*self.error
+            #if PTerm<0:
+            #    PTerm = 0
+
+            print("p(%f) %f i(%f) %f d(%f) %f"%(self.kp,self.kp*self.error, self.ki,self.ITerm, self.kd, self.kd*self.lpf))
+#            self.output = PTerm + self.ITerm - self.kd*dInput
+            self.output = PTerm + self.ITerm - self.kd*self.lpf
+
+            if self.output > self.outMax:
+                self.output = self.outMax
+            elif self.output < self.outMin:
+                self.output = self.outMin
+
+            self.lastInput = input
+            self.lastDInput = dInput
+
+            return True
         else:
-            self.k0 = self.kc * self.ts / self.ti
-        self.k1 = self.kc * self.td / self.ts
-        self.lpf1 = (2.0 * self.k_lpf - self.ts) / (2.0 * self.k_lpf + self.ts)
-        self.lpf2 = self.ts / (2.0 * self.k_lpf + self.ts) 
-        
-    def calcPID_reg3(self, xk, tset, enable):
-        ek = 0.0
-        lpf = 0.0
-        ek = tset - xk # calculate e[k] = SP[k] - PV[k]
-        #--------------------------------------
-        # Calculate Lowpass Filter for D-term
-        #--------------------------------------
-        lpf = self.lpf1 * pidpy.lpf_1 + self.lpf2 * (ek + pidpy.ek_1);
-        
-        if (enable):
-            #-----------------------------------------------------------
-            # Calculate PID controller:
-            # y[k] = y[k-1] + kc*(e[k] - e[k-1] +
-            # Ts*e[k]/Ti +
-            # Td/Ts*(lpf[k] - 2*lpf[k-1] + lpf[k-2]))
-            #-----------------------------------------------------------
-            self.pp = self.kc * (ek - pidpy.ek_1) # y[k] = y[k-1] + Kc*(PV[k-1] - PV[k])
-            self.pi = self.k0 * ek  # + Kc*Ts/Ti * e[k]
-            self.pd = self.k1 * (lpf - 2.0 * pidpy.lpf_1 + pidpy.lpf_2)
-            pidpy.yk += self.pp + self.pi + self.pd
-        else:
-            pidpy.yk = 0.0
-            self.pp = 0.0
-            self.pi = 0.0
-            self.pd = 0.0
-        
-        pidpy.ek_1 = ek # e[k-1] = e[k]
-        pidpy.lpf_2 = pidpy.lpf_1 # update stores for LPF
-        pidpy.lpf_1 = lpf
-            
-        # limit y[k] to GMA_HLIM and GMA_LLIM
-        if (pidpy.yk > pidpy.GMA_HLIM):
-            pidpy.yk = pidpy.GMA_HLIM
-        if (pidpy.yk < pidpy.GMA_LLIM):
-            pidpy.yk = pidpy.GMA_LLIM
-            
-        return pidpy.yk
-                          
+            return False
+
     def calcPID_reg4(self, xk, tset, enable):
-        ek = 0.0
-        ek = tset - xk # calculate e[k] = SP[k] - PV[k]
-        
-        if (enable):
-            #-----------------------------------------------------------
-            # Calculate PID controller:
-            # y[k] = y[k-1] + kc*(PV[k-1] - PV[k] +
-            # Ts*e[k]/Ti +
-            # Td/Ts*(2*PV[k-1] - PV[k] - PV[k-2]))
-            #-----------------------------------------------------------
-            self.pp = self.kc * (pidpy.xk_1 - xk) # y[k] = y[k-1] + Kc*(PV[k-1] - PV[k])
-            self.pi = self.k0 * ek  # + Kc*Ts/Ti * e[k]
-            self.pd = self.k1 * (2.0 * pidpy.xk_1 - xk - pidpy.xk_2)
-            pidpy.yk += self.pp + self.pi + self.pd
-        else:
-            pidpy.yk = 0.0
-            self.pp = 0.0
-            self.pi = 0.0
-            self.pd = 0.0
-            
-        pidpy.xk_2 = pidpy.xk_1  # PV[k-2] = PV[k-1]
-        pidpy.xk_1 = xk    # PV[k-1] = PV[k]
-        
-        # limit y[k] to GMA_HLIM and GMA_LLIM
-        if (pidpy.yk > pidpy.GMA_HLIM):
-            pidpy.yk = pidpy.GMA_HLIM
-        if (pidpy.yk < pidpy.GMA_LLIM):
-            pidpy.yk = pidpy.GMA_LLIM
-            
-        return pidpy.yk
-        
+        if self.isAutomatic and not enable:
+            setAutomatic = false
+            self.setMode(setAutomatic)
+            return false
+        if not self.isAutomatic and enable:
+            setAutomatic = true
+            self.setMode(setAutomatic)
 
-if __name__=="__main__":
+        self.compute(xk, tset)
+        return self.output
 
-    sampleTime = 2
-    pid = PID(sampleTime,0,0,0)
-    temp = 80
-    setpoint = 100
-    enable = True
-    print pid.calcPID_reg4(temp, setpoint, enable)
-    
+    def setTunings(self, Kp, Ki, Kd):
+        print("setTunings(%f,%f,%f)"%(Kp,Ki,Kd))
+        if Kp<0 or Ki<0 or Kd<0:
+            return
+
+        self.Kp = Kp
+        self.Ki = Ki
+        self.Kd = Kd
+
+        SampleTimeInSec = self.sampleTime/1000.0
+
+        self.kp = Kp
+        self.ki = (Kp/Ki) * SampleTimeInSec
+        self.kd = Kp*Kd / SampleTimeInSec
+
+        if self.isDirectionReverse:
+            self.kp = 0 - self.kp
+            self.ki = 0 - self.ki
+            self.kd = 0 - self.kd
+
+    def setSampleTime(self, newSampleTime):
+        if newSampleTime<0:
+            return
+
+        ratio = newSampleTime/self.sampleTime
+        self.ki = self.ki * ratio
+        self.kd = self.kd / ratio
+        self.sampleTime = newSampleTime
+
+    def setOutputLimits(self, minOut, maxOut):
+        if minOut>maxOut:
+            return
+        self.outMax = maxOut
+        self.outMin = minOut
+
+        if self.isAutomatic:
+            if self.output >= self.outMax:
+                self.output = self.outMax
+            elif self.output <= self.outMin:
+                self.output = self.outMin
+
+    def setMode(self, setAutomatic):
+        if setAutomatic:
+            self.initialize()
+        self.isAutomatic = setAutomatic
+
+    def initialize(self):
+        self.ITerm = self.output
+        self.lastInput = self.input
+        self.setOutputLimits(self.outMin, self.outMax)
+
+    def setControllerDirection(self, setDirectionReverse):
+        if self.isAutomatic and self.isDirectionReverse!=setDirectionReverse:
+            self.kp = 0 - self.kp
+            self.ki = 0 - self.ki
+            self.kd = 0 - self.kd
