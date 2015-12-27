@@ -379,30 +379,30 @@ def tempControlProc(myTempSensorNum, LCD, pinNum, readOnly, paramStatus, statusQ
                 readytemp = True
 
             if readytemp == True:
+                temp_ma_list.append(temp)
+
+                #smooth data
+                temp_ma = 0.0 #moving avg init
+                while (len(temp_ma_list) > num_pnts_smooth):
+                    temp_ma_list.pop(0) #remove oldest elements in list
+
+                if (len(temp_ma_list) < num_pnts_smooth):
+                    for temp_pnt in temp_ma_list:
+                        temp_ma += temp_pnt
+                    temp_ma /= len(temp_ma_list)
+                else: #len(temp_ma_list) == num_pnts_smooth
+                    for temp_idx in range(num_pnts_smooth):
+                        temp_ma += temp_ma_list[temp_idx]
+                    temp_ma /= num_pnts_smooth
+
+                temp_str = "%3.2f" % temp_ma
+
+                #print "len(temp_ma_list) = %d" % len(temp_ma_list)
+                #print "Num Points smooth = %d" % num_pnts_smooth
+                #print "temp_ma = %.2f" % temp_ma
+                #print temp_ma_list
+
                 if mode == "auto":
-                    temp_ma_list.append(temp)
-
-                    #smooth data
-                    temp_ma = 0.0 #moving avg init
-                    while (len(temp_ma_list) > num_pnts_smooth):
-                        temp_ma_list.pop(0) #remove oldest elements in list
-
-                    if (len(temp_ma_list) < num_pnts_smooth):
-                        for temp_pnt in temp_ma_list:
-                            temp_ma += temp_pnt
-                        temp_ma /= len(temp_ma_list)
-                    else: #len(temp_ma_list) == num_pnts_smooth
-                        for temp_idx in range(num_pnts_smooth):
-                            temp_ma += temp_ma_list[temp_idx]
-                        temp_ma /= num_pnts_smooth
-
-                    temp_str = "%3.2f" % temp_ma
-
-                    #print "len(temp_ma_list) = %d" % len(temp_ma_list)
-                    #print "Num Points smooth = %d" % num_pnts_smooth
-                    #print "temp_ma = %.2f" % temp_ma
-                    #print temp_ma_list
-
                     #calculate PID every cycle
                     if (readyPIDcalc == True):
                         duty_cycle = pid.calcPID_reg4(temp_ma, set_point, True)
