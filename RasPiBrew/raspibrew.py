@@ -396,6 +396,8 @@ def tempControlProc(myTempSensorNum, LCD, pinNum, readOnly, paramStatus, statusQ
                             temp_ma += temp_ma_list[temp_idx]
                         temp_ma /= num_pnts_smooth
 
+                    temp_str = "%3.2f" % temp_ma
+
                     #print "len(temp_ma_list) = %d" % len(temp_ma_list)
                     #print "Num Points smooth = %d" % num_pnts_smooth
                     #print "temp_ma = %.2f" % temp_ma
