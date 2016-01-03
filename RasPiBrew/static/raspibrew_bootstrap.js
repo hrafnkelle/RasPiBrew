@@ -20,7 +20,7 @@
 // IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //declare globals
-var timeElapsed, tempDataArray, heatDataArray, setpointDataArray, dutyCycle, options_temp, options_heat, plot, gaugeDisplay, newGaugeDisplay;
+var timeElapsed, tempDataArray, heatDataArray, pidDataArray, setpointDataArray, dutyCycle, options_temp, options_heat, options_pid, plot, gaugeDisplay, newGaugeDisplay;
 var capture_on = 1;
 var numTempSensors, tempUnits, temp, setpoint;
 
@@ -211,6 +211,9 @@ function storeData(index, data) {
 
 	tempDataArray[index].push([timeElapsed[index], parseFloat(data.temp)]);
 	heatDataArray[index].push([timeElapsed[index], parseFloat(data.duty_cycle)]);
+	pidDataArray[index]['P'].push([timeElapsed[index], parseFloat(data.p_term)]);
+	pidDataArray[index]['I'].push([timeElapsed[index], parseFloat(data.i_term)]);
+	pidDataArray[index]['D'].push([timeElapsed[index], parseFloat(data.d_term)]);
 
 	//tempDataArray[0].push([i,parseFloat(data.temp)]);
 	//heatDataArray[0].push([i,parseFloat(data.duty_cycle)]);
@@ -223,11 +226,20 @@ function storeData(index, data) {
 		heatDataArray[index].shift();
 	}
 
+	while (pidDataArray[index]['P'].length > jQuery('#windowSizeText').val()) {
+		pidDataArray[index]['P'].shift();
+		pidDataArray[index]['I'].shift();
+		pidDataArray[index]['D'].shift();
+	}
+
 	timeElapsed[index] += parseFloat(data.elapsed);
 
 	jQuery('#windowSizeText').change(function() {
 		tempDataArray[index] = [];
 		heatDataArray[index] = [];
+		pidDataArray[index]['P'] = [];
+		pidDataArray[index]['I'] = [];
+		pidDataArray[index]['D'] = [];
 		timeElapsed[index] = 0;
 	});
 }
@@ -240,6 +252,11 @@ function plotData(index, data) {
 		plot = jQuery.plot($("#tempplot"), [tempDataArray[index]], options_temp);
 	}
 	plot = jQuery.plot($("#heatplot"), [heatDataArray[index]], options_heat);
+	var piddata = [];
+	piddata.push({label: 'P', data: pidDataArray[index].P});
+	piddata.push({label: 'I', data: pidDataArray[index].I})
+	piddata.push({label: 'D', data: pidDataArray[index].D})
+	plot = jQuery.plot($("#pidplot"), piddata, options_pid);
 	//plot.setData([dataarray]);
 	//plot.draw();
 }
@@ -396,6 +413,7 @@ jQuery(document).ready(function() {
 		capture_on = 1;
 		tempDataArray = [[], [], []];
 		heatDataArray = [[], [], []];
+		pidDataArray  = [{'P':[], 'I':[], 'D':[]}, {'P':[], 'I':[], 'D':[]}, {'P':[], 'I':[], 'D':[]}];
 		timeElapsed = [0, 0, 0];
 		waitForMsg();
 	});
@@ -477,6 +495,7 @@ jQuery(document).ready(function() {
 		if (jQuery('#off').is(':checked') == false) {
 			tempDataArray = [[], [], []];
 			heatDataArray = [[], [], []];
+			pidDataArray  = [{'P':[], 'I':[], 'D':[]}, {'P':[], 'I':[], 'D':[]}, {'P':[], 'I':[], 'D':[]}];
 			setpointDataArray = [[], [], []];
 			timeElapsed = [0, 0, 0];
 		}
@@ -508,6 +527,7 @@ jQuery(document).ready(function() {
 	i = 0;
 	tempDataArray = [[], [], []];
 	heatDataArray = [[], [], []];
+	pidDataArray  = [{'P':[], 'I':[], 'D':[]}, {'P':[], 'I':[], 'D':[]}, {'P':[], 'I':[], 'D':[]}];
 	setpointDataArray = [[], [], []];
 	timeElapsed = [0, 0, 0];
 
@@ -554,6 +574,33 @@ jQuery(document).ready(function() {
 			mode : "x"
 		}
 	};
+
+	options_pid = {
+		series : {
+			lines : {
+				show : true
+			},
+			shadowSize : 0
+		},
+		yaxis : {
+			min : null,
+			max : null
+		},
+		xaxis : {
+			show : true
+		},
+		grid : {
+			hoverable : true
+			//  clickable: true
+		},
+		selection : {
+			mode : "x"
+		},
+		legend: {
+			position: "nw"
+		}
+	};
+
 
 	waitForMsg();
 

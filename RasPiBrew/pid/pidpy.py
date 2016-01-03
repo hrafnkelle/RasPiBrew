@@ -1,3 +1,6 @@
+from collections import namedtuple
+
+pidres = namedtuple('pidres', 'output pterm iterm dterm'.split())
 
 class pidpy(object):
     ek_1 = 0.0  # e[k-1] = SP[k-1] - PV[k-1] = Tset_hlt[k-1] - Thlt[k-1]
@@ -107,8 +110,8 @@ class pidpy(object):
         if (pidpy.yk < pidpy.GMA_LLIM):
             pidpy.yk = pidpy.GMA_LLIM
             
-        return pidpy.yk
-        
+        return pidres(pidpy.yk, self.pp, self.pi, self.pd)
+
 
 if __name__=="__main__":
 
@@ -118,4 +121,3 @@ if __name__=="__main__":
     setpoint = 100
     enable = True
     print pid.calcPID_reg4(temp, setpoint, enable)
-    
