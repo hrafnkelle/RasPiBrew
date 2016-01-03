@@ -1,4 +1,7 @@
 import time
+from collections import namedtuple
+
+pidres = namedtuple('pidres', 'output pterm iterm dterm'.split())
 
 class pidpy:
     def __init__(self, sampleTime, Kp, Ki, Kd, setDirectionReverse=False):
@@ -54,13 +57,14 @@ class pidpy:
                 self.ITerm = self.outMin
 
             self.lpf = self.lpf1*self.lpf + self.lpf2*(dInput + self.lastDInput)
-            PTerm = self.kp*self.error
+            self.PTerm = self.kp*self.error
+	    self.DTerm = self.kd*dInput
             #if PTerm<0:
             #    PTerm = 0
 
             print("p(%f) %f i(%f) %f d(%f) %f"%(self.kp,self.kp*self.error, self.ki,self.ITerm, self.kd, self.kd*self.lpf))
 #            self.output = PTerm + self.ITerm - self.kd*dInput
-            self.output = PTerm + self.ITerm - self.kd*self.lpf
+            self.output = self.PTerm + self.ITerm - self.DTerm
 
             if self.output > self.outMax:
                 self.output = self.outMax
@@ -84,7 +88,7 @@ class pidpy:
             self.setMode(setAutomatic)
 
         self.compute(xk, tset)
-        return self.output
+        return pidres(self.output, self.PTerm, self.ITerm, self.DTerm)
 
     def setTunings(self, Kp, Ki, Kd):
         print("setTunings(%f,%f,%f)"%(Kp,Ki,Kd))

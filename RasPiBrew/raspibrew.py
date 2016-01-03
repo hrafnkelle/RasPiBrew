@@ -261,7 +261,7 @@ def unPackParamInitAndPost(paramStatus):
            k_param, i_param, d_param
            
 def packParamGet(numTempSensors, myTempSensorNum, temp, tempUnits, elapsed, mode, cycle_time, duty_cycle, boil_duty_cycle, set_point, \
-                                 boil_manage_temp, num_pnts_smooth, k_param, i_param, d_param):
+                                 boil_manage_temp, num_pnts_smooth, k_param, i_param, d_param, pterm, iterm, dterm):
     
     param.status["numTempSensors"] = numTempSensors
     param.status["myTempSensorNum"] = myTempSensorNum
@@ -278,6 +278,9 @@ def packParamGet(numTempSensors, myTempSensorNum, temp, tempUnits, elapsed, mode
     param.status["k_param"] = k_param
     param.status["i_param"] = i_param
     param.status["d_param"] = d_param
+    param.status["p_term"] = pterm
+    param.status["i_term"] = iterm
+    param.status["d_term"] = dterm
 
     return param.status
         
@@ -287,6 +290,8 @@ def tempControlProc(myTempSensor, display, pinNum, readOnly, paramStatus, status
         mode, cycle_time, duty_cycle, boil_duty_cycle, set_point, boil_manage_temp, num_pnts_smooth, \
         k_param, i_param, d_param = unPackParamInitAndPost(paramStatus)
     
+        pid_res = PIDController.pidres(duty_cycle, 0, 0, 0)
+
         p = current_process()
         print 'Starting:', p.name, p.pid
         
@@ -366,21 +371,20 @@ def tempControlProc(myTempSensor, display, pinNum, readOnly, paramStatus, status
                 if mode == "auto":
                     #calculate PID every cycle
                     if (readyPIDcalc == True):
-                        duty_cycle = pid.calcPID_reg4(temp_ma, set_point, True)
+                        pid_res = pid.calcPID_reg4(temp_ma, set_point, True)
                         #send to heat process every cycle
-                        parent_conn_heat.send([cycle_time, duty_cycle])
+                        parent_conn_heat.send([cycle_time, pid_res.output])
                         readyPIDcalc = False
                     
                 if mode == "boil":
                     if (temp > boil_manage_temp) and (manage_boil_trigger == True): #do once
                         manage_boil_trigger = False
-                        duty_cycle = boil_duty_cycle
-                        parent_conn_heat.send([cycle_time, duty_cycle])
+                        parent_conn_heat.send([cycle_time, boil_duty_cycle])
 
                 #put current status in queue
                 try:
-                    paramStatus = packParamGet(numTempSensors, myTempSensor.sensorNum, temp_str, tempUnits, elapsed, mode, cycle_time, duty_cycle, \
-                            boil_duty_cycle, set_point, boil_manage_temp, num_pnts_smooth, k_param, i_param, d_param)
+                    paramStatus = packParamGet(numTempSensors, myTempSensor.sensorNum, temp_str, tempUnits, elapsed, mode, cycle_time, pid_res.output, \
+                            boil_duty_cycle, set_point, boil_manage_temp, num_pnts_smooth, k_param, i_param, d_param, pid_res.pterm, pid_res.iterm, pid_res.dterm)
                     statusQ.put(paramStatus) #GET request
                 except Full:
                     pass
@@ -416,25 +420,23 @@ def tempControlProc(myTempSensor, display, pinNum, readOnly, paramStatus, status
                     display.showAutoMode(set_point)
                     print "auto selected"
                     pid = PIDController.pidpy(cycle_time, k_param, i_param, d_param) #init pid
-                    duty_cycle = pid.calcPID_reg4(temp_ma, set_point, True)
-                    parent_conn_heat.send([cycle_time, duty_cycle])
+                    pid_res = pid.calcPID_reg4(temp_ma, set_point, True)
+                    duty_cycle = pid_res.output
                 if mode == "boil":
                     display.showBoilMode()
                     print "boil selected"
                     boil_duty_cycle = duty_cycle_temp
                     duty_cycle = 100 #full power to boil manage temperature
                     manage_boil_trigger = True
-                    parent_conn_heat.send([cycle_time, duty_cycle])
                 if mode == "manual":
                     display.showManualMode()
                     print "manual selected"
                     duty_cycle = duty_cycle_temp
-                    parent_conn_heat.send([cycle_time, duty_cycle])
                 if mode == "off":
                     display.showOffMode()
                     print "off selected"
                     duty_cycle = 0
-                    parent_conn_heat.send([cycle_time, duty_cycle])
+                parent_conn_heat.send([cycle_time, duty_cycle])
                 readyPOST = False
             time.sleep(.01)
         
