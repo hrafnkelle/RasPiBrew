@@ -303,9 +303,9 @@ function waitForMsg() {
 			jQuery('#k_paramResponse').html(data.k_param);
 			jQuery('#i_paramResponse').html(data.i_param);
 			jQuery('#d_paramResponse').html(data.d_param);
-			jQuery('#p_term').html(data.p_term);
-			jQuery('#i_term').html(data.i_term);
-			jQuery('#d_term').html(data.d_term);
+			jQuery('#p_term').html(ParseFloat(data.p_term).toFixed(2));
+			jQuery('#i_term').html(ParseFloat(data.i_term).toFixed(2));
+			jQuery('#d_term').html(ParseFloat(data.d_term).toFixed(2));
 
 			//gaugeDisplay.setValue(parseFloat(data.temp));
 
@@ -351,6 +351,9 @@ function waitForMsg() {
 				jQuery('#k_paramResponse2').html(data.k_param);
 				jQuery('#i_paramResponse2').html(data.i_param);
 				jQuery('#d_paramResponse2').html(data.d_param);
+				jQuery('#p_term2').html(ParseFloat(data.p_term).toFixed(2));
+				jQuery('#i_term2').html(ParseFloat(data.i_term).toFixed(2));
+				jQuery('#d_term2').html(ParseFloat(data.d_term).toFixed(2));
 
 				storeData(1, data);
 
@@ -390,9 +393,9 @@ function waitForMsg() {
 				jQuery('#setpointResponse3').html(data.set_point);
 				jQuery('#dutycycleResponse3').html(data.duty_cycle.toFixed(2));
 				jQuery('#cycletimeResponse3').html(data.cycle_time);
-				jQuery('#k_paramResponse3').html(data.k_param);
-				jQuery('#i_paramResponse3').html(data.i_param);
-				jQuery('#d_paramResponse3').html(data.d_param);
+				jQuery('#p_term3').html(ParseFloat(data.p_term).toFixed(2));
+				jQuery('#i_term3').html(ParseFloat(data.i_term).toFixed(2));
+				jQuery('#d_term3').html(ParseFloat(data.d_term).toFixed(2));
 
 				storeData(2, data);
 
