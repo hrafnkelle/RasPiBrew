@@ -303,6 +303,9 @@ function waitForMsg() {
 			jQuery('#k_paramResponse').html(data.k_param);
 			jQuery('#i_paramResponse').html(data.i_param);
 			jQuery('#d_paramResponse').html(data.d_param);
+			jQuery('#p_term').html(data.p_term);
+			jQuery('#i_term').html(data.i_term);
+			jQuery('#d_term').html(data.d_term);
 
 			//gaugeDisplay.setValue(parseFloat(data.temp));
 
