@@ -26,4 +26,9 @@
 	<!-- Units C (Celsius) or F (Fahrenheit) -->
 	<!-- Note: Default is F for Android app which can switch between F and C-->
 	<Temp_Units>F</Temp_Units>
+	<!-- Default parameters for PID regulation -->
+	<KParam>44</KParam>
+	<IParam>165</IParam>
+	<DParam>4</DParam>
+	<CycleTime>2</CycleTime>
 </Config>

@@ -477,6 +477,23 @@ if __name__ == '__main__':
     else:
         display = Display.NoDisplay()
     
+    k_param_elem = xml_root.find('KParam')
+    if k_param_elem is not None:
+        param.status['k_param'] = float(k_param_elem.text.strip())
+
+    i_param_elem = xml_root.find('IParam')
+    if i_param_elem is not None:
+        param.status['i_param'] = float(i_param_elem.text.strip())
+
+    d_param_elem = xml_root.find('DParam')
+    if d_param_elem is not None:
+        param.status['d_param'] = float(d_param_elem.text.strip())
+
+    cycletime_elem = xml_root.find('CycleTime')
+    if cycletime_elem is not None:
+        param.status['cycle_time'] = float(cycletime_elem.text.strip())
+
+
     gpioNumberingScheme = xml_root.find('GPIO_pin_numbering_scheme').text.strip()
     if gpioNumberingScheme == "BOARD":
         GPIO.setmode(GPIO.BOARD)
